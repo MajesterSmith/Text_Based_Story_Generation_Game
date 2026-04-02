@@ -165,7 +165,7 @@ def location_menu(player: PlayerState, world, G) -> PlayerState:
     clear()
     print_player_bar(player)
     if active_quests:
-        print_quest_panel(active_quests[0])
+        print_quest_panel(player)
     print_location(loc, "")
     print_npcs(npcs_here)
     if locked:
@@ -215,7 +215,30 @@ def location_menu(player: PlayerState, world, G) -> PlayerState:
 
     if choice_num == combat_idx:
         manager = CombatManager(player, hostile_npcs)
-        new_player = manager.run_combat()
+        new_player, result = manager.run_combat()
+        
+        # Apply Quest Battle Points 
+        # (Requirements: Win = +15, Loss = -20)
+        active_quests = get_active_quests(player)
+        if active_quests:
+            quest = active_quests[0]
+            delta = 15 if result == "victory" else -20
+            quest.hidden_counter += delta
+            
+            # ── Immersive Narration ──────────────────────────────────
+            summary = f"Fought enemies — {result.capitalize()}"
+            quest.history.append(summary)
+            from engine.llm import narrate_quest_transition
+            quest.last_transitional_narration = narrate_quest_transition(new_player, world, quest, summary)
+
+            if quest.hidden_counter <= 0:
+                quest = quest.fail(player.turn_count)
+                print_message(f"\n[bold red]QUEST FAILED: The defeat was too great for the mission to continue ({quest.title})[/bold red]")
+            else:
+                from ui.renderer import get_quest_status_hint
+                hint = get_quest_status_hint(quest.hidden_counter, quest.win_threshold)
+                print_message(f"\n[cyan]Quest Progress Updated ({delta:+}): {hint}[/cyan]")
+
         if not new_player:
             print_message("\n[bold red]FATAL SYSTEM ERROR: PLAYER DERESOLVED[/bold red]", "red")
             print_message("Game Over.", "dim")
@@ -255,10 +278,11 @@ def location_menu(player: PlayerState, world, G) -> PlayerState:
     if choice_num in beat_choice_map:
         quest, choice = beat_choice_map[choice_num]
         new_player, updated_quest, narration = resolve_choice(
-            player, quest, choice, player.turn_count
+            player, world, quest, choice, player.turn_count
         )
         if narration:
             print_beat_narration(narration)
+        print_quest_panel(player)
         if updated_quest.status.value == "completed":
             print_message(f"\n[bold green]✔ Quest Complete: {updated_quest.title}[/bold green]")
             print_message(f"[green]+{updated_quest.reward_creds}¢[/green]")

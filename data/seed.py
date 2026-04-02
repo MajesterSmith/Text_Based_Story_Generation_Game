@@ -32,7 +32,7 @@ def _register_neon_roles() -> None:
     ROLE_REGISTRY["ghost"] = RoleDef(
         id="ghost", name="Ghost",
         description="A ghost in the machine. You live in the shadows of the net.",
-        stats=Stats(hacking=4, combat=1, stealth=3, persuasion=2, street_cred=1),
+        stats=Stats(strength=2, agility=4, vitality=3, stealth=5, persuasion=3, intelligence=6),
         faction_rep=FactionRep.from_dict({GHOST_COLLECTIVE: 30, NEXUS_CORP: -20}),
         heat=HeatLevel.from_dict({NEXUS_CORP: 15}),
         start_location="glitch_data_den",
@@ -42,7 +42,7 @@ def _register_neon_roles() -> None:
     ROLE_REGISTRY["blade"] = RoleDef(
         id="blade", name="Blade",
         description="Steel nerves, sharper blade. The streets know your name.",
-        stats=Stats(hacking=1, combat=4, stealth=2, persuasion=1, street_cred=3),
+        stats=Stats(strength=6, agility=5, vitality=5, stealth=3, persuasion=2, intelligence=3),
         faction_rep=FactionRep.from_dict({IRON_VEIL: 20, PORT_AUTHORITY: -10}),
         heat=HeatLevel.from_dict({PORT_AUTHORITY: 10}),
         start_location="underbelly_rust_bar",
@@ -52,7 +52,7 @@ def _register_neon_roles() -> None:
     ROLE_REGISTRY["wire"] = RoleDef(
         id="wire", name="Wire",
         description="Information is currency. You deal in both.",
-        stats=Stats(hacking=2, combat=1, stealth=1, persuasion=4, street_cred=3),
+        stats=Stats(strength=3, agility=3, vitality=3, stealth=2, persuasion=6, intelligence=6),
         faction_rep=FactionRep.from_dict({FIXERS_GUILD: 40}),
         heat=HeatLevel(),
         start_location="midtown_fixers_den",

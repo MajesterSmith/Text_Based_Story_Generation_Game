@@ -39,7 +39,7 @@ class Combatant:
     @staticmethod
     def generate_enemy_stats(danger_level: int) -> Stats:
         points = danger_level * 5
-        base = 1
+        base = random.randint(2, 4)
         # Distribute points randomly
         s = [base] * 6
         for _ in range(points):
@@ -147,7 +147,71 @@ class CombatManager:
             possible_stats = ["strength", "agility", "vitality", "stealth", "persuasion", "intelligence"]
             grows = random.sample(possible_stats, 2)
             for s in grows:
-                new_state = new_state.add_xp(s, 1)
-                self.log.append(f"Stat Increased: {s.capitalize()} +1")
+                gain = random.randint(1, 3)
+                new_state = new_state.add_xp(s, gain)
+                self.log.append(f"Stat Increased: {s.capitalize()} +{gain}")
         
         return new_state
+
+    def run_combat(self) -> Tuple[Optional[PlayerState], str]:
+        """Runs the entire combat interaction loop."""
+        from ui.renderer import console, clear, print_player_bar, print_message, prompt_input, pick_int
+        from rich.table import Table
+        
+        self.start_combat()
+        
+        while self.active:
+            clear()
+            print_player_bar(self.player_ref)
+            
+            # Show battle status
+            table = Table(title="Combat Status")
+            table.add_column("Combatant", style="cyan")
+            table.add_column("Health", style="red")
+            table.add_column("Initiative", style="yellow")
+            
+            table.add_row(f"{self.player.name} (YOU)", f"{self.player.health}/{self.player.max_health}", str(self.player.initiative))
+            for e in self.enemies:
+                table.add_row(e.name, f"{e.health}/{e.max_health}", str(e.initiative))
+            console.print(table)
+
+            # Show logs
+            for log_msg in self.log[-5:]:
+                console.print(f"[dim]» {log_msg}[/dim]")
+
+            current = self.get_current_turn()
+            if current.is_player:
+                console.print("\n[bold green]YOUR TURN[/bold green]")
+                console.print(f"1. Attack")
+                console.print(f"2. Defend")
+                action_idx = pick_int("> ", 1, 2)
+                
+                if action_idx == 1:
+                    # Choose target
+                    for i, e in enumerate(self.enemies):
+                        console.print(f"{i+1}. {e.name} ({e.health} HP)")
+                    target_idx = pick_int("Target: ", 1, len(self.enemies)) - 1
+                    self.execute_player_action("attack", target_idx)
+                else:
+                    self.execute_player_action("defend")
+            else:
+                console.print(f"\n[bold red]{current.name}'s TURN[/bold red]")
+                res = self.execute_attack(current, self.player)
+                console.print(f"[bold red]{res}[/bold red]")
+                prompt_input("Press Enter to continue...")
+
+            self.next_turn()
+            
+            result = self.check_victory()
+            if result:
+                new_p = self.finalize_player_state()
+                if result == "victory":
+                    print_message("\n[bold green]VICTORY![/bold green]")
+                else:
+                    print_message("\n[bold red]DEFEATED![/bold red]")
+                    return None, "defeat"
+                
+                prompt_input("Press Enter to end combat...")
+                return new_p, "victory"
+        
+        return self.finalize_player_state(), "none"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+import random
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
@@ -69,12 +70,12 @@ class Stats(BaseModel):
     Core attributes for the combat and skill systems.
     Attribute values range from 1 to 10.
     """
-    strength:     int = Field(default=1, ge=1, le=10)
-    agility:      int = Field(default=1, ge=1, le=10)
-    vitality:     int = Field(default=1, ge=1, le=10)
-    stealth:      int = Field(default=1, ge=1, le=10)
-    persuasion:   int = Field(default=1, ge=1, le=10)
-    intelligence: int = Field(default=1, ge=1, le=10)
+    strength:     int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
+    agility:      int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
+    vitality:     int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
+    stealth:      int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
+    persuasion:   int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
+    intelligence: int = Field(default_factory=lambda: random.randint(2, 4), ge=1, le=10)
 
     def effective(self, stat: str, bonuses: Dict[str, int]) -> int:
         return min(10, getattr(self, stat, 1) + bonuses.get(stat, 0))
@@ -181,6 +182,13 @@ class LocationNode(BaseModel):
     def is_accessible(self, player_heat: int, player_rep: int) -> bool:
         return player_heat < self.heat_lock_threshold and player_rep >= self.rep_lock_threshold
 
+    def denial_reason(self, player_heat: int, player_rep: int) -> Optional[str]:
+        if player_heat >= self.heat_lock_threshold:
+            return f"Heat too high ({player_heat}/{self.heat_lock_threshold})"
+        if player_rep < self.rep_lock_threshold:
+            return f"Reputation too low ({player_rep}/{self.rep_lock_threshold})"
+        return None
+
 
 class District(BaseModel):
     id: str
@@ -200,3 +208,7 @@ class NPC(BaseModel):
     min_rep_to_talk: int = Field(default=-100, ge=-100, le=100)
     quest_ids: List[str] = Field(default_factory=list)
     combat_stats: Optional[Stats] = None
+
+    def can_talk(self, player_rep: int) -> bool:
+        """Simple reputation check to see if the NPC is willing to speak."""
+        return player_rep >= self.min_rep_to_talk

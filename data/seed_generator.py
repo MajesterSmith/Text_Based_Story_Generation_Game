@@ -504,7 +504,7 @@ def _fallback(inputs: dict) -> tuple[WorldState, nx.DiGraph, list[QuestState]]:
     ROLE_REGISTRY["wanderer"] = RoleDef(
         id="wanderer", name="Wanderer",
         description="You carry nothing but a name and a past.",
-        stats=Stats(hacking=2, combat=2, stealth=2, persuasion=2, street_cred=2),
+        stats=Stats(strength=2, agility=2, vitality=2, stealth=2, persuasion=2, intelligence=2),
         start_location="hub_inn",
         start_creds=500,
     )

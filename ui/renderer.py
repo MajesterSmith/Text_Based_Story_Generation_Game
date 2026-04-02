@@ -117,13 +117,42 @@ def print_npcs(npcs: list):
     console.print(f"[dim]People here:[/dim] {names}")
 
 
-def print_quest_panel(quest: QuestState):
-    beat = quest.current_beat()
-    content = f"[bold]{quest.title}[/bold]\n[dim]{quest.description}[/dim]"
-    if beat:
-        content += f"\n\n[yellow]► {beat.objective}[/yellow]"
-    console.print(Panel(content, title="[magenta]Active Quest[/magenta]",
-                        border_style="magenta", padding=(1, 2)))
+def get_quest_status_hint(counter: int, threshold: int) -> str:
+    """Translates the hidden counter into a vague narrative hint."""
+    if counter <= 5:
+        return "[bold red]Critical: The mission is nearly a total loss.[/bold red]"
+    if counter < threshold * 0.4:
+        return "[red]Unstable: Serious mistakes have been made.[/red]"
+    if counter < threshold * 0.7:
+        return "[yellow]Tenuous: You're making progress, but it's risky.[/yellow]"
+    if counter < threshold:
+        return "[cyan]Solid: The plan is coming together.[/cyan]"
+    return "[bold green]Excellent: You have exceeded all expectations.[/bold green]"
+
+
+def print_quest_panel(player: PlayerState):
+    from engine.quest_engine import get_active_quests
+    quests = get_active_quests(player)
+    if not quests:
+        return
+
+    for q in quests:
+        beat = q.current_beat()
+        status_hint = get_quest_status_hint(q.hidden_counter, q.win_threshold)
+        
+        # ── Prepend Transition Narration if exists ──────────────────
+        narration_text = ""
+        if q.last_transitional_narration:
+            narration_text = f"[italic]{q.last_transitional_narration}[/italic]\n\n"
+        
+        content = (
+            f"[bold cyan]{q.title}[/bold cyan]\n"
+            f"[dim]{q.description}[/dim]\n\n"
+            f"{narration_text}"
+            f"[yellow]Objective:[/yellow] {beat.objective if beat else 'None'}\n"
+            f"[magenta]Status:[/magenta] {status_hint}"
+        )
+        console.print(Panel(content, title="Active Quest", border_style="cyan"))
 
 
 def print_beat_narration(narration: str):
@@ -149,9 +178,8 @@ def print_role_select(world_name: str = ""):
     for i, (rid, rdef) in enumerate(ROLE_REGISTRY.items(), start=1):
         s = rdef.stats
         stat_bar = (
-            f"Hack {s.hacking} · Combat {s.combat} · "
-            f"Stealth {s.stealth} · Persuasion {s.persuasion} · "
-            f"Cred {s.street_cred}"
+            f"STR {s.strength} · AGI {s.agility} · VIT {s.vitality} · "
+            f"STE {s.stealth} · PER {s.persuasion} · INT {s.intelligence}"
         )
         start_creds = rdef.start_creds
         lines.append(

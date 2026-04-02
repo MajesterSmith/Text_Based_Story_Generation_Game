@@ -113,6 +113,8 @@ Return ONLY valid JSON — no markdown, no explanation — matching this exact s
   "reward_creds": integer (100-800),
   "reward_rep":  {{"faction_name": integer_delta}},
   "reward_heat": {{"faction_name": integer_delta}},
+  "initial_value": 15,
+  "win_threshold": 40,
   "beats": [
     {{
       "id": "b1",
@@ -133,6 +135,7 @@ Return ONLY valid JSON — no markdown, no explanation — matching this exact s
           "rep_delta":  {{}},
           "health_delta": 0,
           "creds_delta": 0,
+          "counter_delta": integer (-15 to +15),
           "success_narration": "string",
           "failure_narration": "string"
         }}
@@ -157,7 +160,17 @@ Return ONLY valid JSON — no markdown, no explanation — matching this exact s
 
 Make it thematically consistent with {ctx['theme']}, morally ambiguous, specific to {ctx['city']}.
 Use only faction names from: {factions}
-Minimum 2 beats."""
+Minimum 2 beats.
+
+### Threshold System Rules:
+- The hidden counter starts at `initial_value`.
+- Reaching `<= 0` fails the quest immediately.
+- Reaching the finale with `< win_threshold` fails the quest.
+- Assign higher `counter_delta` to "Correct/Smart" choices.
+- Assign negative `counter_delta` to "Mistakes/Wrong" choices.
+- A successful stat check adds +1 automatically (don't include this in delta).
+- Balance the quest so it requires some smart choices to win.
+"""
     return _call_ollama(prompt, expect_json=True)
 
 
@@ -172,4 +185,40 @@ Scene: {beat_narration}
 Player: {player.name} ({player.role}) | Health: {player.health}
 
 Expand this scene into 2-3 vivid sentences. Stay atmospheric. End on tension."""
+    return _call_ollama(prompt)
+
+
+def narrate_quest_transition(player: PlayerState, world: WorldState,
+                             quest: QuestState, latest_event_summary: str) -> str:
+    ctx = world.to_llm_context(player.current_location)
+    history_str = "\n".join(quest.history[-5:])  # Last 5 events for context
+
+    # Foreshadowing hint logic
+    ratio = quest.hidden_counter / max(1, quest.win_threshold)
+    if ratio >= 0.8:
+        foreshadow_hint = "The winds of fate favor them; success feels inevitable yet fragile."
+    elif ratio >= 0.5:
+        foreshadow_hint = "The path ahead is clear, but the shadows are beginning to lengthen."
+    elif ratio >= 0.2:
+        foreshadow_hint = "Each step feels heavier; the city is losing patience and the mission is in jeopardy."
+    else:
+        foreshadow_hint = "The situation is dire; survival is a whisper, and failure a deafening roar."
+
+    prompt = f"""You are the Omniscient Narrator of a {ctx['tone']} {ctx['theme']} saga set in {ctx['city']}.
+A pivotal moment has just passed for {player.name} ({player.role}) during the quest: '{quest.title}'.
+
+Latest Event: {latest_event_summary}
+Memory of Sins (Recent History): 
+{history_str}
+
+World Context: {ctx['location']['name']} — {ctx['location']['hint']}
+Foreshadowing Note: {foreshadow_hint}
+
+Write 2-3 sentences of immersive, detached third-person narration that bridges this latest outcome to the journey ahead.
+- DO NOT use game mechanics (counter, threshold, success/failure).
+- DO NOT use visual distinction (no italics, no special headers).
+- Reference their "Sins" (past choices) if they weigh heavily on the moment.
+- Weave in the poetic foreshadowing of their current momentum.
+- Maintain the {ctx['tone']} tone.
+"""
     return _call_ollama(prompt)

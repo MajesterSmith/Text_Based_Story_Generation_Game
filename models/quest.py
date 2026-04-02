@@ -20,6 +20,7 @@ class BeatChoice(BaseModel):
     rep_delta:  Dict[str, int] = Field(default_factory=dict)
     health_delta: int = 0
     creds_delta:  int = 0
+    counter_delta: int = 0
     success_narration: str = ""
     failure_narration: str = ""
 
@@ -50,6 +51,11 @@ class QuestState(BaseModel):
     reward_creds: int = Field(default=0, ge=0)
     reward_rep:  Dict[str, int] = Field(default_factory=dict)
     reward_heat: Dict[str, int] = Field(default_factory=dict)
+    initial_value: int = 15
+    hidden_counter: int = 15
+    win_threshold: int = 40
+    history: List[str] = Field(default_factory=list)
+    last_transitional_narration: str = ""
     tags: List[str] = Field(default_factory=list)
     turn_accepted:  Optional[int] = None
     turn_completed: Optional[int] = None
@@ -104,12 +110,16 @@ class GeneratedQuestData(BaseModel):
     reward_creds: int = Field(default=200, ge=0)
     reward_rep:  Dict[str, int] = Field(default_factory=dict)
     reward_heat: Dict[str, int] = Field(default_factory=dict)
+    initial_value: int = 15
+    win_threshold: int = 40
     beats: List[Dict] = Field(min_length=2)
 
     def to_quest_state(self, quest_id: str) -> QuestState:
         beats_dict: Dict[str, QuestBeat] = {}
         for b in self.beats:
-            choices = [BeatChoice(**c) for c in b.get("choices", [])]
+            choices = []
+            for c in b.get("choices", []):
+                choices.append(BeatChoice(**c))
             beat = QuestBeat(
                 id=b["id"],
                 title=b["title"],
@@ -136,5 +146,8 @@ class GeneratedQuestData(BaseModel):
             reward_creds=self.reward_creds,
             reward_rep=self.reward_rep,
             reward_heat=self.reward_heat,
+            initial_value=self.initial_value,
+            hidden_counter=self.initial_value,
+            win_threshold=self.win_threshold,
             beats=beats_dict,
         )
