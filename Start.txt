@@ -1,0 +1,48 @@
+# ## 🛠️ Step-by-Step Setup Instructions (Windows, Python 3.11, Ollama ready)
+
+# **Step 1 — Create the project folder**
+# ```
+# mkdir neon_city
+# cd neon_city
+# mkdir models graphs engine ui data
+# ```
+
+# **Step 2 — Create empty `__init__.py` files**
+# ```
+# type nul > models\__init__.py
+# type nul > graphs\__init__.py
+# type nul > engine\__init__.py
+# type nul > ui\__init__.py
+# type nul > data\__init__.py
+# ```
+
+# **Step 3 — Create a virtual environment and activate it**
+# ```
+# python -m venv venv
+# venv\Scripts\activate
+# ```
+
+# **Step 4 — Install dependencies**
+# ```
+# pip install pydantic networkx rich
+# ```
+
+# **Step 5 — Copy all files**
+# Paste each code block above into its corresponding file path exactly as shown in the project structure. Use any editor (VS Code recommended).
+
+# **Step 6 — Confirm Ollama is running**
+# ```
+# ollama serve
+# ```
+# Open a second terminal and verify the model is available:
+# ```
+# ollama list
+# ```
+# You should see `mistral-nemo` in the list. If not, pull it:
+# ```
+# ollama pull mistral-nemo
+# ```
+
+# **Step 7 — Run the game**
+# ```
+# python main.py
