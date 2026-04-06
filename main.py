@@ -17,6 +17,7 @@ from ui.renderer import (
     print_beat_narration, print_message, prompt_input,
     print_role_select, print_lore_intro,
 )
+from database import DatabaseManager
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -54,10 +55,10 @@ def world_selection():
 
     if choice == 1:
         world, G = build_neon_city()
-        return world, G, []
+        return world, G, [], False
 
     world, G, seed_quests = generate_world_from_prompt()
-    return world, G, seed_quests
+    return world, G, seed_quests, True
 
 
 # ── Character Creation ─────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ def character_creation(world) -> PlayerState:
 
 # ── Location Menu ──────────────────────────────────────────────────────────
 
-def location_menu(player: PlayerState, world, G) -> PlayerState:
+def location_menu(player: PlayerState, world, G, db: DatabaseManager, world_id: str, is_generated: bool) -> PlayerState:
     loc       = world.get_location(player.current_location)
     npcs_here = world.npcs_at(player.current_location)
     moves     = available_moves(player, world, G)
@@ -178,6 +179,9 @@ def location_menu(player: PlayerState, world, G) -> PlayerState:
     # ── Handle choice ──────────────────────────────────────────────────────
 
     if choice_num == quit_idx:
+        if is_generated:
+            print_message(f"Cleaning up temporary world '{world.city_name}'...", "dim")
+            db.delete_world_data(world_id)
         print_message("Until next time.", "dim")
         sys.exit(0)
 
@@ -297,14 +301,22 @@ def location_menu(player: PlayerState, world, G) -> PlayerState:
 # ── Entry Point ────────────────────────────────────────────────────────────
 
 def main():
-    world, G, seed_quests = world_selection()
+    db = DatabaseManager()
+    world, G, seed_quests, is_generated = world_selection()
+    world_id = db.save_world(world, is_generated)
+    
     player = character_creation(world)
+    db.save_player(world_id, player)
 
     # Lore intro
     clear()
     print_player_bar(player)
     print_lore_intro(world)
     if seed_quests:
+        # Save seed quests to DB
+        for q in seed_quests:
+            db.save_quest(world_id, q)
+            
         print_message(
             f"[dim]{len(seed_quests)} job(s) are already circulating. "
             "Find a quest-giver to hear them.[/dim]"
@@ -320,7 +332,11 @@ def main():
     prompt_input("Press Enter to continue...")
 
     while player.is_alive:
-        player = location_menu(player, world, G)
+        player = location_menu(player, world, G, db, world_id, is_generated)
+        # Save state after every action
+        db.save_player(world_id, player)
+        for q in get_active_quests(player):
+            db.save_quest(world_id, q)
 
 
 if __name__ == "__main__":
